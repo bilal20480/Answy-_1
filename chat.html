@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Answy+ Chat</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <h1>Answy+</h1>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="index.html#gallery">Personas</a></li>
+      <li><a href="index.html#about">About</a></li>
+      <li><a href="index.html#feedback">Feedback</a></li>
+    </ul>
+  </nav>
+
+  <!-- Chat Container -->
+  <div id="chat-container" class="chat-container">
+    <div class="chat-header">
+      <a href="index.html" class="back-button"><i class="fas fa-arrow-left"></i></a>
+      <div class="persona-info">
+        <img id="chat-persona-img" src="" alt="Persona" class="persona-avatar">
+        <h2 id="chat-persona-name">Chat Window</h2>
+        <p id="chat-persona-tagline" class="tagline"></p>
+      </div>
+    </div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-container">
+      <input type="text" id="user-input" placeholder="Type your message..." class="chat-input">
+      <button id="send-button" class="send-button"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
