@@ -19,9 +19,8 @@
       <li><a href="index.html#feedback">Feedback</a></li>
     </ul>
 
-    <!-- Google Sign-In Button (forces chooser) -->
     <div id="g_id_onload"
-        data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+        data-client_id="101353374197-iis7npn43u4eh7pqco0oh0kin9bao3eg.apps.googleusercontent.com"
         data-context="signin"
         data-ux_mode="popup"
         data-callback="handleGoogleLogin"
@@ -38,9 +37,24 @@
         data-logo_alignment="left">
     </div>
 
-    <!-- User slot -->
     <div id="user-slot"></div>
   </nav>
+
+  <!-- Paywall Modal -->
+  <div id="paywall" class="paywall hidden">
+    <div class="paywall-card">
+      <button id="close-paywall" class="close-x">&times;</button>
+      <h3>Unlock Unlimited Chat</h3>
+      <p class="pw-subtitle">You’ve used your <strong id="used-count">2</strong> free messages. Subscribe to continue.</p>
+      <ul class="pw-list">
+        <li>Unlimited questions</li>
+        <li>Priority responses</li>
+        <li>Cancel anytime</li>
+      </ul>
+      <a id="subscribe-btn" class="subscribe-btn" href="https://buy.stripe.com/test_XXXXXXX" target="_blank" rel="noopener">Subscribe Now</a>
+      <p class="pw-note">Already paid? Click <a href="#" id="refresh-sub">here</a> to refresh your subscription.</p>
+    </div>
+  </div>
 
   <!-- Chat Container -->
   <div id="chat-container" class="chat-container">
