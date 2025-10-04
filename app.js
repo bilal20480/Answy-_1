@@ -27,6 +27,123 @@ let personaPrompts = JSON.parse(localStorage.getItem("personaPrompts")) || {
 
 let currentPersona = null;
 
+// ================== ENFORCE LOGIN (global) ==================
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getUser();
+  const isChat = !!document.getElementById("chat-container");
+
+  // If user not logged in and on chat page -> redirect to index
+  if (!user && isChat) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  // If user not logged in on index -> show gate overlay and lock page
+  const loginGate = document.getElementById("login-gate");
+  if (!user && loginGate) {
+    loginGate.style.display = "flex";
+    // NEW: hide the whole app behind a blank screen until login
+    document.body.classList.add("locked");
+  }
+
+  // If logged in -> render user information, hide gate, unlock page
+  if (user) {
+    renderUserInNavbar(user);
+    if (loginGate) loginGate.style.display = "none";
+    document.body.classList.remove("locked");
+
+    // Auto-fill feedback fields if present
+    const nameInput = document.querySelector("#feedback input[type='text']");
+    const emailInput = document.querySelector("#feedback input[type='email']");
+    if (nameInput && emailInput) {
+      nameInput.value = user.name || "";
+      emailInput.value = user.email || "";
+    }
+  }
+});
+
+// Helpers for user state
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user"));
+  } catch {
+    return null;
+  }
+}
+function setUser(user) {
+  localStorage.setItem("user", JSON.stringify(user));
+  if (user?.email) localStorage.setItem("userEmail", user.email);
+}
+function clearUser() {
+  localStorage.removeItem("user");
+  localStorage.removeItem("userEmail");
+  // Prevent silent auto-login & show account chooser next time
+  if (window.google?.accounts?.id?.disableAutoSelect) {
+    google.accounts.id.disableAutoSelect();
+  }
+}
+
+// Render user info + signout in navbar
+function renderUserInNavbar(user) {
+  const slot = document.getElementById("user-slot");
+  if (!slot) return;
+  if (!document.querySelector(".user-info")) {
+    const wrap = document.createElement("div");
+    wrap.className = "user-info";
+    wrap.innerHTML = `
+      <img src="${user.picture}" alt="User" class="user-avatar">
+      <span>${user.name || user.email || "User"}</span>
+      <button class="signout-btn" id="signout-btn" title="Sign out / switch account">Sign out</button>
+    `;
+    slot.innerHTML = "";
+    slot.appendChild(wrap);
+    const btn = document.getElementById("signout-btn");
+    btn.addEventListener("click", () => {
+      clearUser();
+      // Reload to force login gate & account chooser
+      window.location.reload();
+    });
+  }
+}
+
+// ================== GOOGLE LOGIN HANDLERS ==================
+function handleGoogleLogin(response) {
+  const userInfo = parseJwt(response.credential);
+  console.log("✅ Google User:", userInfo);
+
+  // Persist user + email
+  setUser({
+    sub: userInfo.sub,
+    name: userInfo.name,
+    email: userInfo.email,
+    picture: userInfo.picture
+  });
+
+  // Update navbar and hide gate if present
+  renderUserInNavbar(getUser());
+  const loginGate = document.getElementById("login-gate");
+  if (loginGate) loginGate.style.display = "none";
+  // NEW: reveal the app when logged in
+  document.body.classList.remove("locked");
+
+  // Autofill feedback if present
+  const nameInput = document.querySelector("#feedback input[type='text']");
+  const emailInput = document.querySelector("#feedback input[type='email']");
+  if (nameInput && emailInput) {
+    nameInput.value = userInfo.name || "";
+    emailInput.value = userInfo.email || "";
+  }
+}
+
+function parseJwt(token) {
+  let base64Url = token.split('.')[1];
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  let jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  return JSON.parse(jsonPayload);
+}
+
 // ================== INDEX PAGE ==================
 if (document.getElementById("persona-gallery")) {
   const personaGallery = document.getElementById("persona-gallery");
@@ -176,48 +293,11 @@ if (document.getElementById("chat-container")) {
     const t = document.getElementById("typing");
     if (t) t.remove();
   }
+
   // Feedback Form Submission (Demo)
-document.querySelector(".feedback form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  alert("✅ Thank you for your feedback!");
-  e.target.reset();
-});
-// ================== GOOGLE LOGIN ==================
-function handleGoogleLogin(response) {
-  const userInfo = parseJwt(response.credential);
-  console.log("✅ Google User:", userInfo);
-
-  // Save user info
-  localStorage.setItem("user", JSON.stringify(userInfo));
-
-  // Add user info in navbar
-  const navbar = document.querySelector(".navbar");
-  if (!document.querySelector(".user-info")) {
-    const userDiv = document.createElement("div");
-    userDiv.classList.add("user-info");
-    userDiv.innerHTML = `
-      <img src="${userInfo.picture}" alt="User" class="user-avatar">
-      <span>${userInfo.name}</span>
-    `;
-    navbar.appendChild(userDiv);
-  }
-
-  // Autofill feedback form
-  const nameInput = document.querySelector("#feedback input[type='text']");
-  const emailInput = document.querySelector("#feedback input[type='email']");
-  if (nameInput && emailInput) {
-    nameInput.value = userInfo.name || "";
-    emailInput.value = userInfo.email || "";
-  }
-}
-
-function parseJwt(token) {
-  let base64Url = token.split('.')[1];
-  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  let jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
-  return JSON.parse(jsonPayload);
-}
-
+  document.querySelector(".feedback form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    alert("✅ Thank you for your feedback!");
+    e.target.reset();
+  });
 }
