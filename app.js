@@ -182,5 +182,42 @@ document.querySelector(".feedback form").addEventListener("submit", (e) => {
   alert("✅ Thank you for your feedback!");
   e.target.reset();
 });
+// ================== GOOGLE LOGIN ==================
+function handleGoogleLogin(response) {
+  const userInfo = parseJwt(response.credential);
+  console.log("✅ Google User:", userInfo);
+
+  // Save user info
+  localStorage.setItem("user", JSON.stringify(userInfo));
+
+  // Add user info in navbar
+  const navbar = document.querySelector(".navbar");
+  if (!document.querySelector(".user-info")) {
+    const userDiv = document.createElement("div");
+    userDiv.classList.add("user-info");
+    userDiv.innerHTML = `
+      <img src="${userInfo.picture}" alt="User" class="user-avatar">
+      <span>${userInfo.name}</span>
+    `;
+    navbar.appendChild(userDiv);
+  }
+
+  // Autofill feedback form
+  const nameInput = document.querySelector("#feedback input[type='text']");
+  const emailInput = document.querySelector("#feedback input[type='email']");
+  if (nameInput && emailInput) {
+    nameInput.value = userInfo.name || "";
+    emailInput.value = userInfo.email || "";
+  }
+}
+
+function parseJwt(token) {
+  let base64Url = token.split('.')[1];
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  let jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  return JSON.parse(jsonPayload);
+}
 
 }
