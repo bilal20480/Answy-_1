@@ -6,7 +6,6 @@
   <title>Answy+ - Chat with Personas</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
   <!-- Google Sign-In Script -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -40,16 +39,14 @@
         data-logo_alignment="left">
     </div>
 
-    <!-- Slot for user info + signout (populated by JS) -->
     <div id="user-slot"></div>
   </nav>
 
-  <!-- Login Gate Overlay (shown until user logs in) -->
+  <!-- Login Gate Overlay -->
   <div id="login-gate" class="login-gate" style="display:none;">
     <div class="gate-card">
       <h2>Welcome to Answy+</h2>
       <p>Please continue with Google to access the app.</p>
-      <!-- Extra sign-in button rendered by GIS too -->
       <div class="g_id_signin"
            data-type="standard"
            data-shape="pill"
@@ -58,6 +55,23 @@
            data-size="large"
            data-logo_alignment="left"></div>
       <small class="gate-hint">Having trouble switching accounts? Click “Sign out” in the navbar, then sign in with a different account.</small>
+    </div>
+  </div>
+
+  <!-- Paywall Modal -->
+  <div id="paywall" class="paywall hidden">
+    <div class="paywall-card">
+      <button id="close-paywall" class="close-x">&times;</button>
+      <h3>Unlock Unlimited Chat</h3>
+      <p class="pw-subtitle">You’ve used your <strong id="used-count">2</strong> free messages. Subscribe to continue.</p>
+      <ul class="pw-list">
+        <li>Unlimited questions</li>
+        <li>Priority responses</li>
+        <li>Cancel anytime</li>
+      </ul>
+      <!-- Replace href with your Stripe Payment Link -->
+      <a id="subscribe-btn" class="subscribe-btn" href="https://buy.stripe.com/test_XXXXXXX" target="_blank" rel="noopener">Subscribe Now</a>
+      <p class="pw-note">Already paid? Click <a href="#" id="refresh-sub">here</a> to refresh your subscription.</p>
     </div>
   </div>
 
