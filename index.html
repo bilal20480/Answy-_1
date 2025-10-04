@@ -21,13 +21,15 @@
       <li><a href="#feedback">Feedback</a></li>
     </ul>
 
-    <!-- Google Sign-In Button -->
+    <!-- Google Sign-In Button (forces account chooser) -->
     <div id="g_id_onload"
         data-client_id="101353374197-iis7npn43u4eh7pqco0oh0kin9bao3eg.apps.googleusercontent.com"
         data-context="signin"
         data-ux_mode="popup"
         data-callback="handleGoogleLogin"
-        data-auto_prompt="false">
+        data-auto_prompt="false"
+        data-auto_select="false"
+        data-itp_support="true">
     </div>
     <div class="g_id_signin" 
         data-type="standard" 
@@ -37,7 +39,27 @@
         data-size="large" 
         data-logo_alignment="left">
     </div>
+
+    <!-- Slot for user info + signout (populated by JS) -->
+    <div id="user-slot"></div>
   </nav>
+
+  <!-- Login Gate Overlay (shown until user logs in) -->
+  <div id="login-gate" class="login-gate" style="display:none;">
+    <div class="gate-card">
+      <h2>Welcome to Answy+</h2>
+      <p>Please continue with Google to access the app.</p>
+      <!-- Extra sign-in button rendered by GIS too -->
+      <div class="g_id_signin"
+           data-type="standard"
+           data-shape="pill"
+           data-theme="filled_blue"
+           data-text="continue_with"
+           data-size="large"
+           data-logo_alignment="left"></div>
+      <small class="gate-hint">Having trouble switching accounts? Click “Sign out” in the navbar, then sign in with a different account.</small>
+    </div>
+  </div>
 
   <!-- Hero -->
   <header class="hero">
