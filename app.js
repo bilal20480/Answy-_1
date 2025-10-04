@@ -2,6 +2,14 @@
 const API_KEY = "AIzaSyBYhKY9MQgCDX__BoKqvqx6z30VlnIAdsA";
 const MODEL = "gemini-2.5-flash";
 
+// ---- Subscription config ----
+const FREE_MESSAGES = 2;                   // free Qs per user
+const SUB_PERIOD_DAYS = 30;               // subscription length
+const USE_BACKEND = false;                // set true when you add a real backend
+const BACKEND_URL = "https://your-backend.example.com"; // e.g., Cloud Run / Vercel
+// If you use Stripe Payment Links, set your success URL to include ?sub=success
+// e.g., https://answy...gitlab.io/index.html?sub=success
+
 // Default Personas
 let personas = [
   { id: 'dentist', name: 'Dr. Smile', tagline: 'Your friendly neighborhood dentist', avatar: 'https://www.shutterstock.com/image-photo/european-mid-dentist-woman-smiling-600nw-1938573190.jpg' },
@@ -32,43 +40,55 @@ document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
   const isChat = !!document.getElementById("chat-container");
 
-  // If user not logged in and on chat page -> redirect to index
+  // Redirect if not logged in and on chat page
   if (!user && isChat) {
     window.location.href = "index.html";
     return;
   }
 
-  // If user not logged in on index -> show gate overlay and lock page
+  // Show login lock on index if not logged in
   const loginGate = document.getElementById("login-gate");
   if (!user && loginGate) {
     loginGate.style.display = "flex";
-    // NEW: hide the whole app behind a blank screen until login
     document.body.classList.add("locked");
   }
 
-  // If logged in -> render user information, hide gate, unlock page
+  // Logged in: render user, hide gate
   if (user) {
     renderUserInNavbar(user);
     if (loginGate) loginGate.style.display = "none";
     document.body.classList.remove("locked");
-
-    // Auto-fill feedback fields if present
+    // Autofill feedback
     const nameInput = document.querySelector("#feedback input[type='text']");
     const emailInput = document.querySelector("#feedback input[type='email']");
     if (nameInput && emailInput) {
       nameInput.value = user.name || "";
       emailInput.value = user.email || "";
     }
+    // Handle Stripe success redirect
+    if (new URLSearchParams(window.location.search).get("sub") === "success") {
+      activateSubscriptionLocal(user.email);
+      // OPTIONAL: if you have backend, you should verify session server-side
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    // Refresh subscription status on load
+    refreshSubscriptionStatus();
   }
+
+  // Paywall UI listeners (present on both pages)
+  const paywall = document.getElementById("paywall");
+  const closePaywall = document.getElementById("close-paywall");
+  const refreshSub = document.getElementById("refresh-sub");
+  if (closePaywall) closePaywall.addEventListener("click", () => paywall.classList.add("hidden"));
+  if (refreshSub) refreshSub.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await refreshSubscriptionStatus(true);
+  });
 });
 
-// Helpers for user state
+// --------------- USER STATE HELPERS ---------------
 function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }
 }
 function setUser(user) {
   localStorage.setItem("user", JSON.stringify(user));
@@ -77,13 +97,99 @@ function setUser(user) {
 function clearUser() {
   localStorage.removeItem("user");
   localStorage.removeItem("userEmail");
-  // Prevent silent auto-login & show account chooser next time
-  if (window.google?.accounts?.id?.disableAutoSelect) {
-    google.accounts.id.disableAutoSelect();
+  localStorage.removeItem("subStatus");
+  if (window.google?.accounts?.id?.disableAutoSelect) google.accounts.id.disableAutoSelect();
+}
+
+// --------------- SUBSCRIPTION HELPERS ---------------
+/**
+ * subStatus shape:
+ * {
+ *   email: "...",
+ *   active: true/false,
+ *   expiresAt: 1719999999999 (ms epoch),
+ *   usedCount: 0..n        // free message counter
+ * }
+ */
+function nowMs() { return Date.now(); }
+function subKey(email) { return `subStatus:${email}`; }
+
+function getSubStatus(email) {
+  const local = JSON.parse(localStorage.getItem(subKey(email)) || "null");
+  return local;
+}
+function setSubStatus(obj) {
+  localStorage.setItem(subKey(obj.email), JSON.stringify(obj));
+  // also keep a last snapshot for quick use
+  localStorage.setItem("subStatus", JSON.stringify(obj));
+}
+function ensureSubStatusFor(email) {
+  let st = getSubStatus(email);
+  if (!st) {
+    st = { email, active: false, expiresAt: 0, usedCount: 0 };
+    setSubStatus(st);
+  }
+  return st;
+}
+function isActiveSub(st) {
+  return st?.active && st?.expiresAt && st.expiresAt > nowMs();
+}
+function incrementFreeCount(email) {
+  const st = ensureSubStatusFor(email);
+  st.usedCount = (st.usedCount || 0) + 1;
+  setSubStatus(st);
+  return st.usedCount;
+}
+function remainingFree(email) {
+  const st = ensureSubStatusFor(email);
+  return Math.max(0, FREE_MESSAGES - (st.usedCount || 0));
+}
+function activateSubscriptionLocal(email) {
+  const expiresAt = nowMs() + SUB_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+  const st = { email, active: true, expiresAt, usedCount: 0 };
+  setSubStatus(st);
+  alert("✅ Subscription activated! You now have unlimited chat for 30 days.");
+  // Hide paywall if visible
+  document.getElementById("paywall")?.classList.add("hidden");
+}
+function expireIfNeeded(st) {
+  if (st && st.active && st.expiresAt <= nowMs()) {
+    st.active = false;
+    setSubStatus(st);
   }
 }
 
-// Render user info + signout in navbar
+async function refreshSubscriptionStatus(showAlerts = false) {
+  const user = getUser();
+  if (!user?.email) return;
+
+  // Always check local expiry
+  let st = ensureSubStatusFor(user.email);
+  expireIfNeeded(st);
+
+  if (USE_BACKEND) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/subscriptions/status?email=${encodeURIComponent(user.email)}`);
+      const data = await res.json();
+      // expected { active: bool, expiresAt: number }
+      if (typeof data.active === "boolean") {
+        st.active = data.active;
+        st.expiresAt = data.expiresAt || 0;
+        setSubStatus(st);
+        if (showAlerts) alert("🔄 Subscription status refreshed.");
+      } else if (showAlerts) {
+        alert("⚠️ Could not verify subscription from server.");
+      }
+    } catch (e) {
+      if (showAlerts) alert("⚠️ Network error verifying subscription.");
+    }
+  } else {
+    // Local only (demo)
+    if (showAlerts) alert(`Local subscription: ${isActiveSub(st) ? "ACTIVE" : "INACTIVE"}`);
+  }
+}
+
+// --------------- NAVBAR USER RENDER ---------------
 function renderUserInNavbar(user) {
   const slot = document.getElementById("user-slot");
   if (!slot) return;
@@ -97,21 +203,16 @@ function renderUserInNavbar(user) {
     `;
     slot.innerHTML = "";
     slot.appendChild(wrap);
-    const btn = document.getElementById("signout-btn");
-    btn.addEventListener("click", () => {
+    document.getElementById("signout-btn").addEventListener("click", () => {
       clearUser();
-      // Reload to force login gate & account chooser
       window.location.reload();
     });
   }
 }
 
-// ================== GOOGLE LOGIN HANDLERS ==================
+// --------------- GOOGLE LOGIN HANDLERS ---------------
 function handleGoogleLogin(response) {
   const userInfo = parseJwt(response.credential);
-  console.log("✅ Google User:", userInfo);
-
-  // Persist user + email
   setUser({
     sub: userInfo.sub,
     name: userInfo.name,
@@ -119,14 +220,15 @@ function handleGoogleLogin(response) {
     picture: userInfo.picture
   });
 
-  // Update navbar and hide gate if present
   renderUserInNavbar(getUser());
   const loginGate = document.getElementById("login-gate");
   if (loginGate) loginGate.style.display = "none";
-  // NEW: reveal the app when logged in
   document.body.classList.remove("locked");
 
-  // Autofill feedback if present
+  // initialize sub status for new users
+  ensureSubStatusFor(userInfo.email);
+  refreshSubscriptionStatus();
+  // Autofill feedback
   const nameInput = document.querySelector("#feedback input[type='text']");
   const emailInput = document.querySelector("#feedback input[type='email']");
   if (nameInput && emailInput) {
@@ -144,7 +246,7 @@ function parseJwt(token) {
   return JSON.parse(jsonPayload);
 }
 
-// ================== INDEX PAGE ==================
+// --------------- INDEX PAGE ---------------
 if (document.getElementById("persona-gallery")) {
   const personaGallery = document.getElementById("persona-gallery");
   renderCards();
@@ -198,11 +300,13 @@ if (document.getElementById("persona-gallery")) {
   }
 }
 
-// ================== CHAT PAGE ==================
+// --------------- CHAT PAGE ---------------
 if (document.getElementById("chat-container")) {
   const chatMessages = document.getElementById("chat-messages");
   const userInput = document.getElementById("user-input");
   const sendBtn = document.getElementById("send-button");
+  const paywall = document.getElementById("paywall");
+  const usedCountEl = document.getElementById("used-count");
 
   // Persona from query param
   const urlParams = new URLSearchParams(window.location.search);
@@ -219,19 +323,39 @@ if (document.getElementById("chat-container")) {
   sendBtn.addEventListener("click", sendMessage);
   userInput.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
 
-  function sendMessage() {
+  function gated() {
+    const user = getUser();
+    if (!user?.email) return true; // safety
+    let st = ensureSubStatusFor(user.email);
+    expireIfNeeded(st);
+    if (isActiveSub(st)) return false;
+    const remaining = remainingFree(user.email);
+    if (remaining <= 0) {
+      if (usedCountEl) usedCountEl.textContent = st.usedCount;
+      if (paywall) paywall.classList.remove("hidden");
+      return true;
+    }
+    return false;
+  }
+
+  async function sendMessage() {
+    if (gated()) return; // stop if paywalled
+
     const msg = userInput.value.trim();
     if (!msg) return;
     addUserMessage(msg);
     userInput.value = "";
     showTyping();
-    fetchAIResponse(msg).then(resp => {
-      removeTyping();
-      addBotMessage(resp);
-    }).catch(() => {
-      removeTyping();
-      addBotMessage("⚠️ Sorry, I couldn’t generate a response.");
-    });
+    const resp = await fetchAIResponse(msg).catch(() => "⚠️ Sorry, I couldn’t generate a response.");
+    removeTyping();
+    addBotMessage(resp);
+
+    // increment free usage if not subscribed
+    const user = getUser();
+    if (user?.email) {
+      const st = ensureSubStatusFor(user.email);
+      if (!isActiveSub(st)) incrementFreeCount(user.email);
+    }
   }
 
   async function fetchAIResponse(userMsg) {
@@ -294,7 +418,6 @@ if (document.getElementById("chat-container")) {
     if (t) t.remove();
   }
 
-  // Feedback Form Submission (Demo)
   document.querySelector(".feedback form")?.addEventListener("submit", (e) => {
     e.preventDefault();
     alert("✅ Thank you for your feedback!");
