@@ -5,7 +5,7 @@ const MODEL = "gemini-2.5-flash";
 // ---- Subscription config ----
 const FREE_MESSAGES = 2;                   // free Qs per user
 const SUB_PERIOD_DAYS = 30;               // subscription length
-const USE_BACKEND = true;                // set true when you add a real backend
+const USE_BACKEND = false;                // set true when you add a real backend
 const BACKEND_URL = "https://your-backend.example.com"; // e.g., Cloud Run / Vercel
 // If you use Stripe Payment Links, set your success URL to include ?sub=success
 // e.g., https://answy...gitlab.io/index.html?sub=success
