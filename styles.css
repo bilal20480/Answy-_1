@@ -573,3 +573,94 @@ button:active::after {
   border-radius: 50%;
   border: 2px solid white;
 }
+.user-info {
+  display: flex; align-items: center; gap: 10px; margin-left: 15px;
+  color: white; font-weight: 600;
+}
+.user-avatar {
+  width: 35px; height: 35px; border-radius: 50%; border: 2px solid white;
+}
+
+/* Login Gate Overlay */
+.login-gate {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.gate-card {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  max-width: 420px;
+}
+.gate-card h2 { margin-bottom: 8px; }
+.gate-card p { margin-bottom: 16px; }
+.gate-hint { display:block; margin-top:12px; opacity:0.9; }
+
+/* Signout button style (in navbar) */
+.signout-btn {
+  margin-left: 12px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.6);
+  color: white; background: transparent;
+  cursor: pointer;
+}
+.signout-btn:hover { background: rgba(255,255,255,0.15); }
+/* --- Lock the app until login --- */
+body.locked {
+  overflow: hidden;           /* no scroll */
+  background: #0d0d0f;        /* solid dark so nothing shows through */
+}
+
+/* Hide EVERYTHING except the login gate when locked */
+body.locked > *:not(#login-gate) {
+  display: none !important;
+}
+
+/* Make the gate fully opaque and on top */
+.login-gate {
+  background: #0d0d0f;        /* was translucent; now solid */
+  z-index: 99999;             /* ensure it sits above everything */
+}
+/* --- Lock the app until login (GRADIENT version) --- */
+body.locked {
+  overflow: hidden;                     /* no scroll */
+  background: var(--bg);                /* use your global gradient */
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* Hide EVERYTHING except the login gate when locked */
+body.locked > *:not(#login-gate) {
+  display: none !important;
+}
+
+/* Fullscreen gate with the same animated gradient */
+.login-gate {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+/* Keep the card readable over the gradient */
+.gate-card {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  max-width: 420px;
+}
