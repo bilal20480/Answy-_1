@@ -19,13 +19,15 @@
       <li><a href="index.html#feedback">Feedback</a></li>
     </ul>
 
-    <!-- Google Sign-In Button -->
+    <!-- Google Sign-In Button (forces chooser) -->
     <div id="g_id_onload"
-        data-client_id="101353374197-iis7npn43u4eh7pqco0oh0kin9bao3eg.apps.googleusercontent.com"
+        data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
         data-context="signin"
         data-ux_mode="popup"
         data-callback="handleGoogleLogin"
-        data-auto_prompt="false">
+        data-auto_prompt="false"
+        data-auto_select="false"
+        data-itp_support="true">
     </div>
     <div class="g_id_signin" 
         data-type="standard" 
@@ -35,6 +37,9 @@
         data-size="large" 
         data-logo_alignment="left">
     </div>
+
+    <!-- User slot -->
+    <div id="user-slot"></div>
   </nav>
 
   <!-- Chat Container -->
@@ -57,4 +62,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
